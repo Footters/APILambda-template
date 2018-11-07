@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
+	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -11,24 +13,35 @@ import (
 var (
 	// ErrNameNotProvided is thrown when a name is not provided
 	ErrNameNotProvided = errors.New("no name was provided in the HTTP body")
+	// ErrResponseNotParsed is thrown when the response json is not parsed
+	ErrResponseNotParsed = errors.New("error parsed json response")
 )
 
+//Response struct
+type Response struct {
+	Message string `json:"msg"`
+}
+
 // Handler is your Lambda function handler
-// It uses Amazon API Gateway request/responses provided by the aws-lambda-go/events package,
-// However you could use other event sources (S3, Kinesis etc), or JSON-decoded primitive types such as 'string'.
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	// stdout and stderr are sent to AWS CloudWatch Logs
 	log.Printf("Processing Lambda request %s\n", request.RequestContext.RequestID)
 
-	// If no name is provided in the HTTP request body, throw an error
 	if len(request.Body) < 1 {
 		return events.APIGatewayProxyResponse{}, ErrNameNotProvided
 	}
 
+	m := Response{"Hello " + request.Body}
+	msg, err := json.Marshal(m)
+
+	if err != nil {
+
+		return events.APIGatewayProxyResponse{}, ErrResponseNotParsed
+	}
+
 	return events.APIGatewayProxyResponse{
-		Body:       "Hello " + request.Body,
-		StatusCode: 200,
+		Body:       string(msg),
+		StatusCode: http.StatusOK,
 	}, nil
 
 }
