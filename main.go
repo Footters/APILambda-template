@@ -12,18 +12,21 @@ import (
 
 var (
 	// ErrNameNotProvided is thrown when a name is not provided
-	ErrNameNotProvided = errors.New("no name was provided in the HTTP body")
+	// ErrNameNotProvided = errors.New("no name was provided in the HTTP body")
 	// ErrNotParsed is thrown when the json is not parsed
-	ErrNotParsed = errors.New("error parsed json response")
+	ErrNotParsed = errors.New("error parsed json")
 )
+
+//JSON type
+type JSON []byte
 
 //Response struct
 type Response struct {
 	Message string `json:"msg"`
 }
 
-//CustomRequest struct
-type CustomRequest struct {
+//Input struct
+type Input struct {
 	Name string `json:"name"`
 }
 
@@ -36,54 +39,28 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		// return events.APIGatewayProxyResponse{
 		// 	Body:       "ErrNameNotProvided",
 		// 	StatusCode: 403}, ErrNameNotProvided
-
-		res, err := createResponse("ErrNameNotProvided")
-
-		if err != nil {
-
-			return events.APIGatewayProxyResponse{}, err
-		}
-
-		return events.APIGatewayProxyResponse{Body: string(res),
-			StatusCode: 403}, nil
+		return throwAPIError("nothing was provided in the HTTP body")
 	}
 
-	var creq CustomRequest
-	err := json.Unmarshal([]byte(request.Body), &creq)
+	//Decoding JSON
+	var in Input
+	err := json.Unmarshal(JSON(request.Body), &in)
 
 	if err != nil {
 
-		res, err := createResponse("ErrNotParsed")
-
-		if err != nil {
-
-			return events.APIGatewayProxyResponse{}, err
-		}
-
-		return events.APIGatewayProxyResponse{Body: string(res),
-			StatusCode: 403}, nil
-
+		return throwAPIError(err.Error())
 		// return events.APIGatewayProxyResponse{}, ErrNotParsed
 	}
 
 	//Making response
-	m := Response{"Hello " + creq.Name}
+	m := Response{"Hello " + in.Name}
 	msg, err := json.Marshal(m)
 
 	if err != nil {
 
 		//return events.APIGatewayProxyResponse{Body: "ErrNotParsed",
 		//	StatusCode: 403}, ErrNotParsed
-
-		res, err := createResponse("ErrNotParsed")
-
-		if err != nil {
-
-			return events.APIGatewayProxyResponse{}, err
-		}
-
-		return events.APIGatewayProxyResponse{Body: string(res),
-			StatusCode: 403}, nil
+		return throwAPIError(err.Error())
 	}
 
 	return events.APIGatewayProxyResponse{
@@ -93,7 +70,20 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 }
 
-func createResponse(message string) ([]byte, error) {
+func throwAPIError(errorMessage string) (events.APIGatewayProxyResponse, error) {
+
+	res, err := createResponse(errorMessage)
+
+	if err != nil {
+
+		return events.APIGatewayProxyResponse{}, err
+	}
+
+	return events.APIGatewayProxyResponse{Body: string(res),
+		StatusCode: 403}, nil
+}
+
+func createResponse(message string) (JSON, error) {
 	m := Response{message}
 	msg, err := json.Marshal(m)
 
