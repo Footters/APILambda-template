@@ -11,14 +11,20 @@ import (
 )
 
 var (
-	// ErrNameNotProvided is thrown when a name is not provided
-	// ErrNameNotProvided = errors.New("no name was provided in the HTTP body")
 	// ErrNotParsed is thrown when the json is not parsed
 	ErrNotParsed = errors.New("error parsed json")
+	// ErrNotBody is thrown when a body is not provided
+	ErrNotBody = errors.New("nothing was provided in the HTTP body")
 )
 
 //JSON type
 type JSON []byte
+
+//APIRequest type
+type APIRequest events.APIGatewayProxyRequest
+
+//APIResponse type
+type APIResponse events.APIGatewayProxyResponse
 
 //Response struct
 type Response struct {
@@ -31,15 +37,13 @@ type Input struct {
 }
 
 // Handler is your Lambda function handler
-func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func Handler(request APIRequest) (APIResponse, error) {
 
 	log.Printf("Processing Lambda request %s\n", request.RequestContext.RequestID)
 
 	if len(request.Body) < 1 {
-		// return events.APIGatewayProxyResponse{
-		// 	Body:       "ErrNameNotProvided",
-		// 	StatusCode: 403}, ErrNameNotProvided
-		return throwAPIError("nothing was provided in the HTTP body")
+
+		return throwAPIError(ErrNotBody)
 	}
 
 	//Decoding JSON
@@ -48,50 +52,43 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	if err != nil {
 
-		return throwAPIError(err.Error())
-		// return events.APIGatewayProxyResponse{}, ErrNotParsed
+		return throwAPIError(err)
 	}
 
-	//Making response
-	m := Response{"Hello " + in.Name}
-	msg, err := json.Marshal(m)
+	//Coding JSON
+	msg, err := createResponseJSON("Hello " + in.Name)
 
 	if err != nil {
-
-		//return events.APIGatewayProxyResponse{Body: "ErrNotParsed",
-		//	StatusCode: 403}, ErrNotParsed
-		return throwAPIError(err.Error())
+		return throwAPIError(err)
 	}
 
-	return events.APIGatewayProxyResponse{
+	return APIResponse{
 		Body:       string(msg),
 		StatusCode: http.StatusOK,
 	}, nil
 
 }
 
-func throwAPIError(errorMessage string) (events.APIGatewayProxyResponse, error) {
+//Aux func to throw errors
+func throwAPIError(err error) (APIResponse, error) {
 
-	res, err := createResponse(errorMessage)
+	res, err := createResponseJSON(err.Error())
 
 	if err != nil {
 
-		return events.APIGatewayProxyResponse{}, err
+		return throwAPIError(err)
 	}
 
-	return events.APIGatewayProxyResponse{Body: string(res),
+	return APIResponse{Body: string(res),
 		StatusCode: 403}, nil
 }
 
-func createResponse(message string) (JSON, error) {
+//Aux func to create a ResponseJSON
+func createResponseJSON(message string) (JSON, error) {
 	m := Response{message}
 	msg, err := json.Marshal(m)
 
-	if err != nil {
-		return nil, ErrNotParsed
-	}
-
-	return msg, nil
+	return msg, err
 }
 
 func main() {
