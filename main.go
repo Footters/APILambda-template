@@ -80,7 +80,7 @@ func throwAPIError(err error) (APIResponse, error) {
 	}
 
 	return APIResponse{Body: string(res),
-		StatusCode: 403}, nil
+		StatusCode: http.StatusBadRequest}, nil
 }
 
 //Aux func to create a ResponseJSON
